@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Free Download</title>
+<style>
+  :root {
+    --bg: #0a0710;
+    --card: #15101d;
+    --line: #2c2238;
+    --text: #f1ecf7;
+    --muted: #9a8fab;
+    --accent: #b45cff;
+    --ok: #3ddc97;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .bg {
+    position: fixed; inset: 0; z-index: -1;
+    background-size: cover; background-position: center;
+    filter: blur(60px) brightness(.35) saturate(1.3);
+    transform: scale(1.2);
+  }
+  .card {
+    width: 100%; max-width: 420px;
+    background: color-mix(in srgb, var(--card) 85%, transparent);
+    border: 1px solid var(--line); border-radius: 20px;
+    padding: 24px; backdrop-filter: blur(10px);
+  }
+  .art { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; display: block; background: #222; }
+  h1 { font-size: 1.5rem; margin-top: 18px; line-height: 1.2; }
+  .artist { color: var(--muted); margin-top: 4px; }
+  .player { margin-top: 16px; border-radius: 10px; overflow: hidden; }
+  .player iframe { width: 100%; height: 120px; border: 0; display: block; }
+  .label { margin-top: 22px; font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .step {
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 10px; padding: 14px 16px; width: 100%;
+    border: 1px solid var(--line); border-radius: 12px;
+    background: transparent; color: var(--text);
+    font-family: inherit; font-size: 1rem; font-weight: 600; text-align: left; cursor: pointer;
+    transition: border-color .2s;
+  }
+  .step:hover { border-color: var(--accent); }
+  .step .icon { width: 22px; height: 22px; flex: none; }
+  .step .check { margin-left: auto; color: var(--ok); opacity: 0; transition: opacity .2s; }
+  .step.done { border-color: var(--ok); }
+  .step.done .check { opacity: 1; }
+  .download {
+    margin-top: 16px; width: 100%; padding: 16px;
+    border-radius: 12px; display: block; text-align: center; text-decoration: none;
+    font-size: 1.05rem; font-weight: 700;
+    background: var(--line); color: var(--muted); cursor: not-allowed;
+    transition: background .3s, color .3s;
+  }
+  .download.unlocked { background: var(--accent); color: #fff; cursor: pointer; }
+  .hint { margin-top: 10px; font-size: .8rem; color: var(--muted); text-align: center; min-height: 1em; }
+  footer { margin-top: 18px; font-size: .75rem; color: var(--muted); text-align: center; }
+  footer a { color: var(--muted); }
+
+  /* catalogue view (no ?t=) */
+  .list { list-style: none; margin-top: 16px; display: grid; gap: 10px; }
+  .list a {
+    display: flex; align-items: center; gap: 12px; padding: 10px;
+    border: 1px solid var(--line); border-radius: 12px;
+    color: var(--text); text-decoration: none; font-weight: 600;
+  }
+  .list a:hover { border-color: var(--accent); }
+  .list img { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="bg" id="bg"></div>
+
+<!-- Single-track gate -->
+<main class="card hidden" id="gate">
+  <img class="art" id="art" alt="">
+  <h1 id="title"></h1>
+  <div class="artist" id="artist"></div>
+  <div class="player" id="player"></div>
+
+  <div class="label">Unlock your free download</div>
+  <button class="step" id="igStep" type="button">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.5"/>
+      <circle cx="17.5" cy="6.5" r="1" fill="currentColor"/>
+    </svg>
+    <span id="igText">Follow on Instagram</span>
+    <span class="check">✓</span>
+  </button>
+
+  <a class="download" id="dl" aria-disabled="true">🔒 Download</a>
+  <div class="hint" id="hint">Follow first to unlock the download</div>
+  <footer id="footer"></footer>
+</main>
+
+<!-- Catalogue (shown when no ?t= or unknown slug) -->
+<main class="card hidden" id="catalogue">
+  <h1 id="catTitle">Free Downloads</h1>
+  <div class="artist" id="catNote"></div>
+  <ul class="list" id="list"></ul>
+</main>
+
+<script src="tracks.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const slug = new URLSearchParams(location.search).get("t");
+const track = slug && TRACKS[slug];
+
+if (!track) showCatalogue(); else showGate(track);
+
+function showCatalogue() {
+  $("catalogue").classList.remove("hidden");
+  $("catTitle").textContent = `${SITE.artist} — Free Downloads`;
+  if (slug) $("catNote").textContent = `No track called "${slug}". Pick one below:`;
+  for (const [key, t] of Object.entries(TRACKS)) {
+    const li = document.createElement("li");
+    li.innerHTML = `<a href="?t=${encodeURIComponent(key)}"><img src="${t.cover}" alt=""><span></span></a>`;
+    li.querySelector("span").textContent = t.title;
+    $("list").appendChild(li);
+  }
+}
+
+function showGate(t) {
+  const artist = t.artist || SITE.artist;
+  const storeKey = "gate-unlocked:" + t.file;
+  if (t.accent) document.documentElement.style.setProperty("--accent", t.accent);
+
+  document.title = `${artist} — ${t.title} (Free Download)`;
+  $("gate").classList.remove("hidden");
+  $("title").textContent = t.title;
+  $("artist").textContent = artist;
+  $("art").src = t.cover;
+  $("art").alt = `${t.title} cover art`;
+  $("bg").style.backgroundImage = `url("${t.cover}")`;
+  $("igText").textContent = `Follow @${SITE.igHandle} on Instagram`;
+  $("footer").innerHTML = `© ${new Date().getFullYear()} ${artist} · <a href="${SITE.instagram}" target="_blank" rel="noopener">@${SITE.igHandle}</a>`;
+
+  if (t.soundcloud) {
+    const src = "https://w.soundcloud.com/player/?url=" + encodeURIComponent(t.soundcloud) +
+      "&color=" + encodeURIComponent(t.accent || "#b45cff") +
+      "&auto_play=false&hide_related=true&show_comments=false&show_reposts=false&visual=false";
+    $("player").innerHTML = `<iframe allow="autoplay" src="${src}" title="SoundCloud player"></iframe>`;
+  }
+
+  function unlock() {
+    $("igStep").classList.add("done");
+    const dl = $("dl");
+    dl.classList.add("unlocked");
+    dl.removeAttribute("aria-disabled");
+    dl.href = t.file;
+    dl.setAttribute("download", t.file.split("/").pop());
+    dl.textContent = `⬇ Download ${t.format || ""}`.trim();
+    $("hint").textContent = "Thanks for the follow 🙏";
+    try { localStorage.setItem(storeKey, "1"); } catch (e) {}
+  }
+
+  try { if (localStorage.getItem(storeKey) === "1") unlock(); } catch (e) {}
+
+  let counting = false;
+  $("igStep").addEventListener("click", () => {
+    // Open Instagram in a centred pop-up window (mobile browsers open it as a new tab)
+    const w = 480, h = 720;
+    const left = Math.max(0, (screen.width - w) / 2);
+    const top = Math.max(0, (screen.height - h) / 2);
+    const pop = window.open(SITE.instagram, "igfollow",
+      `popup=yes,width=${w},height=${h},left=${left},top=${top}`);
+    if (!pop) window.open(SITE.instagram, "_blank");   // pop-up blocked → normal tab
+
+    if ($("igStep").classList.contains("done") || counting) return;
+    counting = true;
+    let s = SITE.unlockDelay;
+    $("hint").textContent = `Unlocking in ${s}s…`;
+    const timer = setInterval(() => {
+      s--;
+      if (s <= 0) { clearInterval(timer); unlock(); }
+      else $("hint").textContent = `Unlocking in ${s}s…`;
+    }, 1000);
+  });
+
+  $("dl").addEventListener("click", e => {
+    if (!$("dl").classList.contains("unlocked")) {
+      e.preventDefault();
+      $("hint").textContent = "Tap the Instagram follow button first 👆";
+    }
+  });
+}
+</script>
+</body>
+</html>
